@@ -8,6 +8,7 @@ import com.donarg.api.publicacion.model.Publicacion;
 import com.donarg.api.publicacion.repository.PublicacionRepository;
 import com.donarg.api.usuario.model.Usuario;
 import com.donarg.api.usuario.repository.UsuarioRepository;
+import com.donarg.api.usuario.security.UsuarioActualProvider;
 import com.donarg.api.valoracion.dto.request.ValoracionRequest;
 import com.donarg.api.valoracion.dto.response.ValoracionResponse;
 import com.donarg.api.valoracion.mapper.ValoracionMapper;
@@ -25,6 +26,7 @@ public class ValoracionServiceImpl implements ValoracionService {
     private final ValoracionRepository valoracionRepository;
     private final PublicacionRepository publicacionRepository;
     private final UsuarioRepository usuarioRepository;
+    private final UsuarioActualProvider usuarioActualProvider;
     private final ValoracionMapper valoracionMapper;
 
     @Override
@@ -36,8 +38,7 @@ public class ValoracionServiceImpl implements ValoracionService {
             throw new OperacionInvalidaException("Solo se puede calificar una publicacion en estado COMPLETADA");
         }
 
-        Usuario evaluador = usuarioRepository.findById(request.getUsuarioEvaluadorId())
-                .orElseThrow(() -> new ResourceNotFoundException("No se encontro el usuario con id " + request.getUsuarioEvaluadorId()));
+        Usuario evaluador = usuarioActualProvider.obtener();
 
         Usuario evaluado = determinarEvaluado(publicacion, evaluador.getId());
 

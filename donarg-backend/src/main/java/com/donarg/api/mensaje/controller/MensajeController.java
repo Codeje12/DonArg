@@ -27,4 +27,15 @@ public class MensajeController {
     public ResponseEntity<List<MensajeResponse>> listarPorChat(@RequestParam Long chatId) {
         return ResponseEntity.ok(mensajeService.listarPorChat(chatId));
     }
+
+    @GetMapping("/no-leidos")
+    public ResponseEntity<Long> contarNoLeidos(@RequestParam Long chatId) {
+        return ResponseEntity.ok(mensajeService.contarNoLeidos(chatId));
+    }
+
+    @PatchMapping("/marcar-leidos")
+    public ResponseEntity<Void> marcarLeidos(@RequestParam Long chatId) {
+        mensajeService.marcarLeidos(chatId);
+        return ResponseEntity.noContent().build();
+    }
 }

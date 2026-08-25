@@ -19,8 +19,10 @@ import com.donarg.api.publicacion.repository.PublicacionRepository;
 import com.donarg.api.publicacion.service.PublicacionService;
 import com.donarg.api.usuario.model.Usuario;
 import com.donarg.api.usuario.repository.UsuarioRepository;
-import java.util.List;
+import com.donarg.api.usuario.security.UsuarioActualProvider;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -29,6 +31,7 @@ public class PublicacionServiceImpl implements PublicacionService {
 
     private final PublicacionRepository publicacionRepository;
     private final UsuarioRepository usuarioRepository;
+    private final UsuarioActualProvider usuarioActualProvider;
     private final CategoriaRepository categoriaRepository;
     private final InteresRepository interesRepository;
     private final OfertaRepository ofertaRepository;
@@ -37,7 +40,7 @@ public class PublicacionServiceImpl implements PublicacionService {
 
     @Override
     public PublicacionResponse crear(PublicacionRequest request) {
-        Usuario usuario = buscarUsuarioOFallar(request.getUsuarioId());
+        Usuario usuario = usuarioActualProvider.obtener();
         Categoria categoria = buscarCategoriaOFallar(request.getCategoriaId());
 
         Publicacion publicacion = publicacionMapper.toEntity(request, usuario, categoria);
@@ -46,10 +49,9 @@ public class PublicacionServiceImpl implements PublicacionService {
     }
 
     @Override
-    public List<PublicacionResponse> listar(TipoPublicacion tipo, EstadoPublicacion estado, Long categoriaId) {
-        return publicacionRepository.buscarConFiltros(tipo, estado, categoriaId).stream()
-                .map(publicacionMapper::toResponse)
-                .toList();
+    public Page<PublicacionResponse> listar(TipoPublicacion tipo, EstadoPublicacion estado, Long categoriaId, Long usuarioId, Pageable pageable) {
+        return publicacionRepository.buscarConFiltros(tipo, estado, categoriaId, usuarioId, pageable)
+                .map(publicacionMapper::toResponse);
     }
 
     @Override
@@ -60,6 +62,7 @@ public class PublicacionServiceImpl implements PublicacionService {
     @Override
     public PublicacionResponse actualizar(Long id, PublicacionActualizacionRequest request) {
         Publicacion publicacion = buscarPublicacionOFallar(id);
+        validarDueño(publicacion);
 
         if (publicacion.getEstado() != EstadoPublicacion.ACTIVA) {
             throw new OperacionInvalidaException("Solo se puede editar una publicacion en estado ACTIVA");
@@ -82,6 +85,7 @@ public class PublicacionServiceImpl implements PublicacionService {
     @Override
     public PublicacionResponse elegirInteresado(Long id, ElegirInteresadoRequest request) {
         Publicacion publicacion = buscarPublicacionOFallar(id);
+        validarDueño(publicacion);
 
         if (publicacion.getEstado() != EstadoPublicacion.ACTIVA) {
             throw new OperacionInvalidaException("Solo se puede elegir un interesado sobre una publicacion en estado ACTIVA");
@@ -119,6 +123,7 @@ public class PublicacionServiceImpl implements PublicacionService {
     @Override
     public PublicacionResponse cerrar(Long id) {
         Publicacion publicacion = buscarPublicacionOFallar(id);
+        validarDueño(publicacion);
 
         if (publicacion.getEstado() != EstadoPublicacion.RESERVADA) {
             throw new OperacionInvalidaException("Solo se puede cerrar una publicacion en estado RESERVADA");
@@ -133,6 +138,7 @@ public class PublicacionServiceImpl implements PublicacionService {
     @Override
     public PublicacionResponse cancelar(Long id) {
         Publicacion publicacion = buscarPublicacionOFallar(id);
+        validarDueño(publicacion);
 
         if (publicacion.getEstado() != EstadoPublicacion.ACTIVA && publicacion.getEstado() != EstadoPublicacion.RESERVADA) {
             throw new OperacionInvalidaException("No se puede cancelar una publicacion en estado " + publicacion.getEstado());
@@ -142,6 +148,12 @@ public class PublicacionServiceImpl implements PublicacionService {
 
         Publicacion publicacionActualizada = publicacionRepository.save(publicacion);
         return publicacionMapper.toResponse(publicacionActualizada);
+    }
+
+    private void validarDueño(Publicacion publicacion) {
+        if (!publicacion.getUsuario().getId().equals(usuarioActualProvider.obtenerId())) {
+            throw new OperacionInvalidaException("Solo el dueño de la publicacion puede hacer esto");
+        }
     }
 
     private Publicacion buscarPublicacionOFallar(Long id) {

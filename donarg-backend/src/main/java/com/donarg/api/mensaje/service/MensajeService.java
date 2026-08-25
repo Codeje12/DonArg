@@ -9,4 +9,8 @@ public interface MensajeService {
     MensajeResponse enviar(MensajeRequest request);
 
     List<MensajeResponse> listarPorChat(Long chatId);
+
+    long contarNoLeidos(Long chatId);
+
+    void marcarLeidos(Long chatId);
 }

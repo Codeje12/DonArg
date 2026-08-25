@@ -4,8 +4,8 @@ const items = [
     { label: 'Inicio', icon: '⌂', to: '/' },
     { label: 'Buscar', icon: '⌕', to: null },
     { label: 'Publicar', icon: '+', to: '/publicar' },
-    { label: 'Mensajes', icon: '✉', to: null },
-    { label: 'Perfil', icon: '☺', to: '/perfil' },
+    { label: 'Mensajes', icon: '✉', to: '/mensajes' },
+    { label: 'Perfil', icon: '☺', to: '/mi-cuenta' },
 ]
 
 function BottomNav() {

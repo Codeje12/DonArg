@@ -1,6 +1,7 @@
 package com.donarg.api.imagen.service.impl;
 
 import com.donarg.api.exception.ArchivoInvalidoException;
+import com.donarg.api.exception.OperacionInvalidaException;
 import com.donarg.api.exception.ResourceNotFoundException;
 import com.donarg.api.imagen.dto.response.ImagenResponse;
 import com.donarg.api.imagen.mapper.ImagenMapper;
@@ -9,6 +10,7 @@ import com.donarg.api.imagen.repository.ImagenRepository;
 import com.donarg.api.imagen.service.ImagenService;
 import com.donarg.api.publicacion.model.Publicacion;
 import com.donarg.api.publicacion.repository.PublicacionRepository;
+import com.donarg.api.usuario.security.UsuarioActualProvider;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,6 +32,7 @@ public class ImagenServiceImpl implements ImagenService {
 
     private final ImagenRepository imagenRepository;
     private final PublicacionRepository publicacionRepository;
+    private final UsuarioActualProvider usuarioActualProvider;
     private final ImagenMapper imagenMapper;
 
     @Value("${donarg.imagenes.directorio}")
@@ -48,6 +51,10 @@ public class ImagenServiceImpl implements ImagenService {
 
         Publicacion publicacion = publicacionRepository.findById(publicacionId)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontro la publicacion con id " + publicacionId));
+
+        if (!publicacion.getUsuario().getId().equals(usuarioActualProvider.obtenerId())) {
+            throw new OperacionInvalidaException("Solo el dueño de la publicacion puede agregarle fotos");
+        }
 
         String nombreArchivo = generarNombreArchivo(archivo.getOriginalFilename());
         guardarEnDisco(archivo, nombreArchivo);
@@ -68,6 +75,11 @@ public class ImagenServiceImpl implements ImagenService {
     public void eliminar(Long id) {
         Imagen imagen = imagenRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontro la imagen con id " + id));
+
+        if (!imagen.getPublicacion().getUsuario().getId().equals(usuarioActualProvider.obtenerId())) {
+            throw new OperacionInvalidaException("Solo el dueño de la publicacion puede borrarle fotos");
+        }
+
         imagenRepository.delete(imagen);
     }
 

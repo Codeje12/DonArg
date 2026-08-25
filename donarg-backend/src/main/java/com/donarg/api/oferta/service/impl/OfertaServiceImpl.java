@@ -14,7 +14,7 @@ import com.donarg.api.publicacion.model.Publicacion;
 import com.donarg.api.publicacion.model.TipoPublicacion;
 import com.donarg.api.publicacion.repository.PublicacionRepository;
 import com.donarg.api.usuario.model.Usuario;
-import com.donarg.api.usuario.repository.UsuarioRepository;
+import com.donarg.api.usuario.security.UsuarioActualProvider;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,7 +25,7 @@ public class OfertaServiceImpl implements OfertaService {
 
     private final OfertaRepository ofertaRepository;
     private final PublicacionRepository publicacionRepository;
-    private final UsuarioRepository usuarioRepository;
+    private final UsuarioActualProvider usuarioActualProvider;
     private final OfertaMapper ofertaMapper;
 
     @Override
@@ -41,14 +41,13 @@ public class OfertaServiceImpl implements OfertaService {
             throw new OperacionInvalidaException("Solo se puede ofrecer en una publicacion en estado ACTIVA");
         }
 
-        if (request.getUsuarioId().equals(publicacion.getUsuario().getId())) {
+        Usuario usuario = usuarioActualProvider.obtener();
+
+        if (usuario.getId().equals(publicacion.getUsuario().getId())) {
             throw new OperacionInvalidaException("El dueño de la publicacion no puede ofrecerse a si mismo");
         }
 
-        Usuario usuario = usuarioRepository.findById(request.getUsuarioId())
-                .orElseThrow(() -> new ResourceNotFoundException("No se encontro el usuario con id " + request.getUsuarioId()));
-
-        if (ofertaRepository.existsByPublicacionIdAndUsuarioId(request.getPublicacionId(), request.getUsuarioId())) {
+        if (ofertaRepository.existsByPublicacionIdAndUsuarioId(request.getPublicacionId(), usuario.getId())) {
             throw new OfertaDuplicadaException("Ya te ofreciste para esta publicacion");
         }
 
@@ -68,6 +67,11 @@ public class OfertaServiceImpl implements OfertaService {
     public void eliminar(Long id) {
         Oferta oferta = ofertaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontro la oferta con id " + id));
+
+        if (!oferta.getUsuario().getId().equals(usuarioActualProvider.obtenerId())) {
+            throw new OperacionInvalidaException("Solo quien se ofrecio lo puede borrar");
+        }
+
         ofertaRepository.delete(oferta);
     }
 }

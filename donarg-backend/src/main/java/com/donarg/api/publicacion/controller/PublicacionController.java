@@ -8,8 +8,9 @@ import com.donarg.api.publicacion.model.EstadoPublicacion;
 import com.donarg.api.publicacion.model.TipoPublicacion;
 import com.donarg.api.publicacion.service.PublicacionService;
 import jakarta.validation.Valid;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,11 +29,14 @@ public class PublicacionController {
     }
 
     @GetMapping
-    public ResponseEntity<List<PublicacionResponse>> listar(
+    public ResponseEntity<Page<PublicacionResponse>> listar(
             @RequestParam(required = false) TipoPublicacion tipo,
             @RequestParam(required = false) EstadoPublicacion estado,
-            @RequestParam(required = false) Long categoriaId) {
-        return ResponseEntity.ok(publicacionService.listar(tipo, estado, categoriaId));
+            @RequestParam(required = false) Long categoriaId,
+            @RequestParam(required = false) Long usuarioId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(publicacionService.listar(tipo, estado, categoriaId, usuarioId, PageRequest.of(page, size)));
     }
 
     @GetMapping("/{id}")

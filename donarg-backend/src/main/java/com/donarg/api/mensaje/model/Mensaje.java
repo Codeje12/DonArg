@@ -42,6 +42,9 @@ public class Mensaje {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String contenido;
 
+    @Column(nullable = false)
+    private boolean leido;
+
     // la completa Postgres con DEFAULT now() al insertar (ver DDL), nunca se setea desde Java
     @Generated(event = EventType.INSERT)
     @Column(nullable = false, insertable = false, updatable = false)

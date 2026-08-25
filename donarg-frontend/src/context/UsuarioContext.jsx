@@ -8,7 +8,7 @@ export function UsuarioProvider({ children }) {
     const [cargando, setCargando] = useState(true)
 
     useEffect(() => {
-        const usuarioId = localStorage.getItem('usuarioId')
+        const usuarioId = localStorage.getItem('usuarioId') || sessionStorage.getItem('usuarioId')
         if (!usuarioId) {
             setCargando(false)
             return
@@ -16,17 +16,27 @@ export function UsuarioProvider({ children }) {
 
         buscarUsuarioPorId(usuarioId)
             .then(response => setUsuarioActualState(response.data))
-            .catch(() => localStorage.removeItem('usuarioId'))
+            .catch(() => {
+                localStorage.removeItem('usuarioId')
+                sessionStorage.removeItem('usuarioId')
+            })
             .finally(() => setCargando(false))
     }, [])
 
-    function setUsuarioActual(usuario) {
-        localStorage.setItem('usuarioId', usuario.id)
+    function setUsuarioActual(usuario, recordar = true) {
+        if (recordar) {
+            localStorage.setItem('usuarioId', usuario.id)
+            sessionStorage.removeItem('usuarioId')
+        } else {
+            sessionStorage.setItem('usuarioId', usuario.id)
+            localStorage.removeItem('usuarioId')
+        }
         setUsuarioActualState(usuario)
     }
 
     function cerrarSesion() {
         localStorage.removeItem('usuarioId')
+        sessionStorage.removeItem('usuarioId')
         setUsuarioActualState(null)
     }
 

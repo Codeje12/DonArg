@@ -17,9 +17,6 @@ public class ReclamoRequest {
     @NotNull(message = "La publicacion es obligatoria")
     private Long publicacionId;
 
-    @NotNull(message = "El usuario es obligatorio")
-    private Long usuarioId;
-
     @NotBlank(message = "El dato de verificacion es obligatorio")
     @Size(max = 500, message = "El dato de verificacion no puede superar los 500 caracteres")
     private String datoVerificacion;

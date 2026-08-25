@@ -70,7 +70,7 @@ public class Publicacion {
 
     private Double longitud;
 
-    // la completa Postgres con DEFAULT now() al insertar (ver DDL), nunca se setea desde Java
+    // la completa Postgres con DEFAULT now() al insertar, nunca se setea desde Java
     @Generated(event = EventType.INSERT)
     @Column(name = "fecha_publicacion", nullable = false, insertable = false, updatable = false)
     private LocalDateTime fechaPublicacion;

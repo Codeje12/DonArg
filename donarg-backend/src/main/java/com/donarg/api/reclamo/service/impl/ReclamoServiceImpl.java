@@ -15,7 +15,7 @@ import com.donarg.api.reclamo.model.Reclamo;
 import com.donarg.api.reclamo.repository.ReclamoRepository;
 import com.donarg.api.reclamo.service.ReclamoService;
 import com.donarg.api.usuario.model.Usuario;
-import com.donarg.api.usuario.repository.UsuarioRepository;
+import com.donarg.api.usuario.security.UsuarioActualProvider;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,7 +26,7 @@ public class ReclamoServiceImpl implements ReclamoService {
 
     private final ReclamoRepository reclamoRepository;
     private final PublicacionRepository publicacionRepository;
-    private final UsuarioRepository usuarioRepository;
+    private final UsuarioActualProvider usuarioActualProvider;
     private final ChatService chatService;
     private final ReclamoMapper reclamoMapper;
 
@@ -43,12 +43,11 @@ public class ReclamoServiceImpl implements ReclamoService {
             throw new OperacionInvalidaException("Solo se puede reclamar sobre una publicacion en estado ACTIVA");
         }
 
-        if (request.getUsuarioId().equals(publicacion.getUsuario().getId())) {
+        Usuario usuario = usuarioActualProvider.obtener();
+
+        if (usuario.getId().equals(publicacion.getUsuario().getId())) {
             throw new OperacionInvalidaException("El dueño de la publicacion no puede reclamar su propio hallazgo");
         }
-
-        Usuario usuario = usuarioRepository.findById(request.getUsuarioId())
-                .orElseThrow(() -> new ResourceNotFoundException("No se encontro el usuario con id " + request.getUsuarioId()));
 
         Reclamo reclamo = reclamoMapper.toEntity(request, publicacion, usuario);
         Reclamo reclamoGuardado = reclamoRepository.save(reclamo);
@@ -65,6 +64,7 @@ public class ReclamoServiceImpl implements ReclamoService {
     @Override
     public ReclamoResponse aceptar(Long id) {
         Reclamo reclamo = buscarReclamoOFallar(id);
+        validarDueño(reclamo.getPublicacion());
 
         if (reclamo.getEstado() != EstadoReclamo.PENDIENTE) {
             throw new OperacionInvalidaException("Solo se puede aceptar un reclamo en estado PENDIENTE");
@@ -95,6 +95,7 @@ public class ReclamoServiceImpl implements ReclamoService {
     @Override
     public ReclamoResponse rechazar(Long id) {
         Reclamo reclamo = buscarReclamoOFallar(id);
+        validarDueño(reclamo.getPublicacion());
 
         if (reclamo.getEstado() != EstadoReclamo.PENDIENTE) {
             throw new OperacionInvalidaException("Solo se puede rechazar un reclamo en estado PENDIENTE");
@@ -103,6 +104,12 @@ public class ReclamoServiceImpl implements ReclamoService {
         reclamo.setEstado(EstadoReclamo.RECHAZADO);
         Reclamo reclamoActualizado = reclamoRepository.save(reclamo);
         return reclamoMapper.toResponse(reclamoActualizado);
+    }
+
+    private void validarDueño(Publicacion publicacion) {
+        if (!publicacion.getUsuario().getId().equals(usuarioActualProvider.obtenerId())) {
+            throw new OperacionInvalidaException("Solo el dueño de la publicacion puede resolver este reclamo");
+        }
     }
 
     private Reclamo buscarReclamoOFallar(Long id) {

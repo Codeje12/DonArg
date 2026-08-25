@@ -11,6 +11,10 @@ export function listarImagenesPorPublicacion(publicacionId) {
     return api.get('/imagenes', { params: { publicacionId } })
 }
 
+export function eliminarImagen(id) {
+    return api.delete(`/imagenes/${id}`)
+}
+
 export function obtenerUrlImagen(nombreArchivo) {
     return `${BACKEND_URL}/uploads/${nombreArchivo}`
 }

@@ -25,6 +25,7 @@ public class MensajeMapper {
         response.setUsuarioId(mensaje.getUsuario().getId());
         response.setUsuarioNombre(mensaje.getUsuario().getNombre());
         response.setContenido(mensaje.getContenido());
+        response.setLeido(mensaje.isLeido());
         response.setFecha(mensaje.getFecha());
         return response;
     }

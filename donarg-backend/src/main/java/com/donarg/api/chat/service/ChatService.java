@@ -1,6 +1,8 @@
 package com.donarg.api.chat.service;
 
 import com.donarg.api.chat.dto.response.ChatResponse;
+import com.donarg.api.chat.dto.response.ChatResumenResponse;
+import java.util.List;
 
 public interface ChatService {
 
@@ -10,4 +12,6 @@ public interface ChatService {
     ChatResponse buscarPorId(Long id);
 
     ChatResponse buscarPorPublicacionId(Long publicacionId);
+
+    List<ChatResumenResponse> listarPorUsuario();
 }

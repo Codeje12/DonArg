@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { obtenerPublicaciones } from '../services/publicacionService'
 import { obtenerCategorias } from '../services/categoriaService'
 import Header from '../components/Header'
@@ -6,11 +6,17 @@ import BottomNav from '../components/BottomNav'
 import PublicacionCard from '../components/PublicacionCard'
 import PublicacionDetalle from '../components/PublicacionDetalle'
 
+const TAMANIO_PAGINA = 10
+
 function Feed() {
     const [publicaciones, setPublicaciones] = useState([])
     const [categorias, setCategorias] = useState([])
     const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null)
     const [publicacionSeleccionada, setPublicacionSeleccionada] = useState(null)
+    const [pagina, setPagina] = useState(0)
+    const [hayMas, setHayMas] = useState(true)
+    const [cargandoMas, setCargandoMas] = useState(false)
+    const sentinelaRef = useRef(null)
 
     useEffect(() => {
         obtenerCategorias()
@@ -18,14 +24,48 @@ function Feed() {
             .catch(error => console.error('Error al traer categorias', error))
     }, [])
 
+    // Al cambiar de categoria arrancamos de nuevo desde la primera pagina.
     useEffect(() => {
-        obtenerPublicaciones(categoriaSeleccionada)
-            .then(response => setPublicaciones(response.data))
-            .catch(error => console.error('Error al traer publicaciones', error))
+        setPublicaciones([])
+        setPagina(0)
+        setHayMas(true)
     }, [categoriaSeleccionada])
+
+    useEffect(() => {
+        setCargandoMas(true)
+        obtenerPublicaciones(categoriaSeleccionada, pagina, TAMANIO_PAGINA)
+            .then(response => {
+                const { content, last } = response.data
+                setPublicaciones(prev => (pagina === 0 ? content : [...prev, ...content]))
+                setHayMas(!last)
+            })
+            .catch(error => console.error('Error al traer publicaciones', error))
+            .finally(() => setCargandoMas(false))
+    }, [categoriaSeleccionada, pagina])
+
+    useEffect(() => {
+        const nodo = sentinelaRef.current
+        if (!nodo) {
+            return
+        }
+
+        const observer = new IntersectionObserver(entradas => {
+            if (entradas[0].isIntersecting && hayMas && !cargandoMas) {
+                setPagina(p => p + 1)
+            }
+        }, { rootMargin: '300px' })
+
+        observer.observe(nodo)
+        return () => observer.disconnect()
+    }, [hayMas, cargandoMas])
 
     function esActiva(categoriaId) {
         return categoriaSeleccionada === categoriaId
+    }
+
+    function handlePublicacionActualizada(publicacionActualizada) {
+        setPublicacionSeleccionada(publicacionActualizada)
+        setPublicaciones(prev => prev.map(pub => pub.id === publicacionActualizada.id ? publicacionActualizada : pub))
     }
 
     return (
@@ -93,7 +133,7 @@ function Feed() {
                         ))}
                     </div>
 
-                    {publicaciones.length === 0 ? (
+                    {publicaciones.length === 0 && !cargandoMas ? (
                         <p className="text-sm text-neutral-500 mt-4">
                             No hay publicaciones para mostrar.
                         </p>
@@ -108,12 +148,20 @@ function Feed() {
                             ))}
                         </div>
                     )}
+
+                    <div ref={sentinelaRef} />
+                    {cargandoMas && (
+                        <p className="text-sm text-neutral-400 text-center mt-6">Cargando más publicaciones...</p>
+                    )}
                 </main>
 
-                {/* Panel de detalle: solo en desktop, al lado del feed */}
-                <aside className="hidden md:block w-80 shrink-0">
+                {/* Panel de detalle: solo en desktop, al lado del feed. Sticky para que no se pierda de vista al scrollear la lista. */}
+                <aside className="hidden md:block w-80 shrink-0 self-start sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto">
                     {publicacionSeleccionada ? (
-                        <PublicacionDetalle publicacion={publicacionSeleccionada} />
+                        <PublicacionDetalle
+                            publicacion={publicacionSeleccionada}
+                            onActualizar={handlePublicacionActualizada}
+                        />
                     ) : (
                         <div className="text-sm text-neutral-400 border border-dashed border-neutral-200 rounded-xl p-6 text-center">
                             Seleccioná una publicación para ver el detalle
@@ -128,6 +176,7 @@ function Feed() {
                     <PublicacionDetalle
                         publicacion={publicacionSeleccionada}
                         onVolver={() => setPublicacionSeleccionada(null)}
+                        onActualizar={handlePublicacionActualizada}
                     />
                 </div>
             )}

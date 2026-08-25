@@ -45,6 +45,23 @@ public class GlobalExceptionHandler {
         return construir(HttpStatus.BAD_REQUEST, "El archivo supera el tamaño maximo permitido");
     }
 
+    @ExceptionHandler(CredencialesInvalidasException.class)
+    public ResponseEntity<ErrorResponse> handleCredencialesInvalidas(CredencialesInvalidasException ex) {
+        return construir(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
+    @ExceptionHandler(RegistroInvalidoException.class)
+    public ResponseEntity<ErrorResponse> handleRegistroInvalido(RegistroInvalidoException ex) {
+        ErrorResponse body = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                HttpStatus.CONFLICT.getReasonPhrase(),
+                ex.getMessage(),
+                ex.getErrores()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidacion(MethodArgumentNotValidException ex) {
         Map<String, String> errores = new HashMap<>();

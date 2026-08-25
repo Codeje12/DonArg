@@ -17,5 +17,6 @@ public class MensajeResponse {
     private Long usuarioId;
     private String usuarioNombre;
     private String contenido;
+    private boolean leido;
     private LocalDateTime fecha;
 }

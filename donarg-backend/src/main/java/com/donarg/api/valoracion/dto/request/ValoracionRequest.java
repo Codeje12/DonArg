@@ -18,9 +18,6 @@ public class ValoracionRequest {
     @NotNull(message = "La publicacion es obligatoria")
     private Long publicacionId;
 
-    @NotNull(message = "El usuario evaluador es obligatorio")
-    private Long usuarioEvaluadorId;
-
     @NotNull(message = "El puntaje es obligatorio")
     @Min(value = 1, message = "El puntaje minimo es 1")
     @Max(value = 5, message = "El puntaje maximo es 5")

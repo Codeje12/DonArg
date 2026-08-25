@@ -16,9 +16,6 @@ public class OfertaRequest {
     @NotNull(message = "La publicacion es obligatoria")
     private Long publicacionId;
 
-    @NotNull(message = "El usuario es obligatorio")
-    private Long usuarioId;
-
     @Size(max = 300, message = "El mensaje no puede superar los 300 caracteres")
     private String mensaje;
 }

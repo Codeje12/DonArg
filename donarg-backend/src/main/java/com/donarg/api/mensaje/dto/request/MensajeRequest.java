@@ -16,9 +16,6 @@ public class MensajeRequest {
     @NotNull(message = "El chat es obligatorio")
     private Long chatId;
 
-    @NotNull(message = "El usuario es obligatorio")
-    private Long usuarioId;
-
     @NotBlank(message = "El contenido es obligatorio")
     private String contenido;
 }

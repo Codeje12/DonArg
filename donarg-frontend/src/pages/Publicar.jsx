@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useUsuario } from '../context/UsuarioContext'
 import { obtenerCategorias } from '../services/categoriaService'
-import { crearPublicacion } from '../services/publicacionService'
-import { agregarImagen } from '../services/imagenService'
+import { crearPublicacion, buscarPublicacionPorId, actualizarPublicacion } from '../services/publicacionService'
+import { agregarImagen, listarImagenesPorPublicacion, eliminarImagen, obtenerUrlImagen } from '../services/imagenService'
 import Header from '../components/Header'
 import BottomNav from '../components/BottomNav'
 
@@ -16,10 +16,24 @@ const formInicial = {
     condicion: '',
 }
 
+const etiquetasTipo = {
+    DONACION: 'Donación',
+    PEDIDO: 'Pedido',
+    ENCONTRADO: 'Objeto encontrado',
+}
+
+// PublicacionResponse.condicion viene como etiqueta legible ("Poco uso"), no como el valor crudo
+// del enum ("POCO_USO") que espera el <select> y PublicacionActualizacionRequest.
+const condicionPorEtiqueta = {
+    'Nuevo': 'NUEVO',
+    'Poco uso': 'POCO_USO',
+    'Usado': 'USADO',
+}
+
 const TAMANIO_MAXIMO_MB = 5
 const TAMANIO_MAXIMO_BYTES = TAMANIO_MAXIMO_MB * 1024 * 1024
 
-// Mismas reglas que PublicacionRequest en el backend, mas las del multipart de /api/imagenes.
+// Mismas reglas que PublicacionRequest/PublicacionActualizacionRequest en el backend, mas las del multipart de /api/imagenes.
 function validar(form, imagenes) {
     const errores = {}
 
@@ -55,18 +69,53 @@ function formatearTamanio(bytes) {
 function Publicar() {
     const { usuarioActual } = useUsuario()
     const navigate = useNavigate()
+    const { id } = useParams()
+    const esEdicion = Boolean(id)
+
     const [categorias, setCategorias] = useState([])
     const [form, setForm] = useState(formInicial)
+    const [imagenesExistentes, setImagenesExistentes] = useState([])
     const [imagenes, setImagenes] = useState([])
     const [errores, setErrores] = useState({})
     const [errorGeneral, setErrorGeneral] = useState(null)
     const [enviando, setEnviando] = useState(false)
+    const [cargandoPublicacion, setCargandoPublicacion] = useState(esEdicion)
+    const [noEditable, setNoEditable] = useState(false)
 
     useEffect(() => {
         obtenerCategorias()
             .then(response => setCategorias(response.data))
             .catch(error => console.error('Error al traer categorias', error))
     }, [])
+
+    useEffect(() => {
+        if (!esEdicion || !usuarioActual) {
+            return
+        }
+
+        buscarPublicacionPorId(id)
+            .then(response => {
+                const publicacion = response.data
+
+                if (publicacion.usuarioId !== usuarioActual.id || publicacion.estado !== 'ACTIVA') {
+                    setNoEditable(true)
+                    return
+                }
+
+                setForm({
+                    tipoPublicacion: publicacion.tipoPublicacion,
+                    categoriaId: String(publicacion.categoriaId),
+                    titulo: publicacion.titulo,
+                    descripcion: publicacion.descripcion || '',
+                    zonaAprox: publicacion.zonaAprox || '',
+                    condicion: publicacion.condicion ? condicionPorEtiqueta[publicacion.condicion] : '',
+                })
+
+                return listarImagenesPorPublicacion(id).then(res => setImagenesExistentes(res.data))
+            })
+            .catch(error => console.error('Error al traer la publicacion', error))
+            .finally(() => setCargandoPublicacion(false))
+    }, [esEdicion, id, usuarioActual])
 
     function handleChange(e) {
         setForm({ ...form, [e.target.name]: e.target.value })
@@ -82,6 +131,12 @@ function Publicar() {
         setImagenes(imagenes.filter((_, i) => i !== index))
     }
 
+    function quitarImagenExistente(imagenId) {
+        eliminarImagen(imagenId)
+            .then(() => setImagenesExistentes(prev => prev.filter(img => img.id !== imagenId)))
+            .catch(error => console.error('Error al eliminar la imagen', error))
+    }
+
     function handleSubmit(e) {
         e.preventDefault()
 
@@ -94,12 +149,19 @@ function Publicar() {
         setErrorGeneral(null)
         setEnviando(true)
 
-        crearPublicacion({
-            ...form,
+        const datosComunes = {
             categoriaId: Number(form.categoriaId),
+            titulo: form.titulo,
+            descripcion: form.descripcion,
+            zonaAprox: form.zonaAprox,
             condicion: form.condicion || null,
-            usuarioId: usuarioActual.id,
-        })
+        }
+
+        const guardar = esEdicion
+            ? actualizarPublicacion(id, datosComunes)
+            : crearPublicacion({ ...datosComunes, tipoPublicacion: form.tipoPublicacion })
+
+        guardar
             .then(response => {
                 if (imagenes.length === 0) {
                     return null
@@ -113,14 +175,14 @@ function Publicar() {
                 if (fallidas > 0) {
                     console.error(`${fallidas} imagen(es) no se pudieron subir`)
                 }
-                navigate('/')
+                navigate(esEdicion ? '/mis-publicaciones' : '/')
             })
             .catch(err => {
                 const data = err.response?.data
                 if (data?.errores) {
                     setErrores(data.errores)
                 } else {
-                    setErrorGeneral(data?.message || 'No se pudo crear la publicacion')
+                    setErrorGeneral(data?.message || 'No se pudo guardar la publicacion')
                 }
             })
             .finally(() => setEnviando(false))
@@ -134,8 +196,34 @@ function Publicar() {
                     <p className="text-sm text-neutral-600">
                         Necesitás crear tu usuario antes de publicar.
                     </p>
-                    <Link to="/perfil" className="inline-block mt-3 text-emerald-700 font-medium text-sm">
-                        Ir a Perfil
+                    <Link to="/login" className="inline-block mt-3 text-emerald-700 font-medium text-sm">
+                        Iniciá sesión
+                    </Link>
+                </div>
+                <BottomNav />
+            </div>
+        )
+    }
+
+    if (esEdicion && cargandoPublicacion) {
+        return (
+            <div className="min-h-screen bg-neutral-50 pb-16 md:pb-0">
+                <Header />
+                <BottomNav />
+            </div>
+        )
+    }
+
+    if (esEdicion && noEditable) {
+        return (
+            <div className="min-h-screen bg-neutral-50 pb-16 md:pb-0">
+                <Header />
+                <div className="mx-auto max-w-md px-4 py-8 text-center">
+                    <p className="text-sm text-neutral-600">
+                        Esta publicación no se puede editar (no es tuya, o ya no está activa).
+                    </p>
+                    <Link to="/mis-publicaciones" className="inline-block mt-3 text-emerald-700 font-medium text-sm">
+                        Volver a Mis publicaciones
                     </Link>
                 </div>
                 <BottomNav />
@@ -149,20 +237,26 @@ function Publicar() {
 
             <div className="mx-auto max-w-lg px-4 py-8">
                 <form onSubmit={handleSubmit} noValidate className="bg-white rounded-xl border border-neutral-200 p-6 space-y-4">
-                    <h2 className="text-lg font-semibold text-neutral-900">Nueva publicación</h2>
+                    <h2 className="text-lg font-semibold text-neutral-900">
+                        {esEdicion ? 'Editar publicación' : 'Nueva publicación'}
+                    </h2>
 
                     <div>
                         <label className="text-sm text-neutral-600">Tipo</label>
-                        <select
-                            name="tipoPublicacion"
-                            value={form.tipoPublicacion}
-                            onChange={handleChange}
-                            className="mt-1 w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm"
-                        >
-                            <option value="DONACION">Donación</option>
-                            <option value="PEDIDO">Pedido</option>
-                            <option value="ENCONTRADO">Objeto encontrado</option>
-                        </select>
+                        {esEdicion ? (
+                            <p className="mt-1 text-sm text-neutral-700">{etiquetasTipo[form.tipoPublicacion]}</p>
+                        ) : (
+                            <select
+                                name="tipoPublicacion"
+                                value={form.tipoPublicacion}
+                                onChange={handleChange}
+                                className="mt-1 w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm"
+                            >
+                                <option value="DONACION">Donación</option>
+                                <option value="PEDIDO">Pedido</option>
+                                <option value="ENCONTRADO">Objeto encontrado</option>
+                            </select>
+                        )}
                     </div>
 
                     <div>
@@ -240,6 +334,27 @@ function Publicar() {
                             Podés elegir varias fotos del mismo objeto (máximo {TAMANIO_MAXIMO_MB}MB cada una).
                         </p>
 
+                        {imagenesExistentes.length > 0 && (
+                            <ul className="mt-2 grid grid-cols-3 gap-2">
+                                {imagenesExistentes.map(img => (
+                                    <li key={img.id} className="relative aspect-square rounded-lg overflow-hidden bg-neutral-100">
+                                        <img
+                                            src={obtenerUrlImagen(img.nombreArchivo)}
+                                            alt=""
+                                            className="w-full h-full object-cover"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => quitarImagenExistente(img.id)}
+                                            className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                                        >
+                                            ✕
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+
                         {imagenes.length > 0 && (
                             <ul className="mt-2 space-y-1">
                                 {imagenes.map((archivo, index) => (
@@ -284,7 +399,9 @@ function Publicar() {
                         disabled={enviando}
                         className="w-full bg-emerald-600 text-white text-sm font-medium py-2 rounded-lg disabled:opacity-50"
                     >
-                        {enviando ? 'Publicando...' : 'Publicar'}
+                        {esEdicion
+                            ? (enviando ? 'Guardando...' : 'Guardar cambios')
+                            : (enviando ? 'Publicando...' : 'Publicar')}
                     </button>
                 </form>
             </div>

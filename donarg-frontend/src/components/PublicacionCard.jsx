@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { listarImagenesPorPublicacion, obtenerUrlImagen } from '../services/imagenService'
 import ImagenPlaceholder from './ImagenPlaceholder'
+import { estilosEstado, etiquetasEstado } from '../utils/estadoPublicacion'
 
-function PublicacionCard({ publicacion, onClick }) {
+function PublicacionCard({ publicacion, onClick, mostrarEstado = false }) {
     const [imagenes, setImagenes] = useState([])
 
     useEffect(() => {
@@ -16,7 +17,12 @@ function PublicacionCard({ publicacion, onClick }) {
             onClick={onClick}
             className="bg-white rounded-xl border border-neutral-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
         >
-            <div className="aspect-4/3">
+            <div className="aspect-4/3 relative">
+                {mostrarEstado && (
+                    <span className={`absolute top-2 left-2 z-10 text-xs font-medium px-2 py-0.5 rounded-full ${estilosEstado[publicacion.estado]}`}>
+                        {etiquetasEstado[publicacion.estado]}
+                    </span>
+                )}
                 {imagenes.length > 0 ? (
                     <img
                         src={obtenerUrlImagen(imagenes[0].nombreArchivo)}

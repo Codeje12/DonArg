@@ -18,9 +18,6 @@ import lombok.Setter;
 @AllArgsConstructor
 public class PublicacionRequest {
 
-    @NotNull(message = "El usuario es obligatorio")
-    private Long usuarioId;
-
     @NotNull(message = "La categoria es obligatoria")
     private Long categoriaId;
 

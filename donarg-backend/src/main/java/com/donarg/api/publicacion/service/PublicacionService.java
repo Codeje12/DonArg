@@ -6,13 +6,14 @@ import com.donarg.api.publicacion.dto.request.PublicacionRequest;
 import com.donarg.api.publicacion.dto.response.PublicacionResponse;
 import com.donarg.api.publicacion.model.EstadoPublicacion;
 import com.donarg.api.publicacion.model.TipoPublicacion;
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface PublicacionService {
 
     PublicacionResponse crear(PublicacionRequest request);
 
-    List<PublicacionResponse> listar(TipoPublicacion tipo, EstadoPublicacion estado, Long categoriaId);
+    Page<PublicacionResponse> listar(TipoPublicacion tipo, EstadoPublicacion estado, Long categoriaId, Long usuarioId, Pageable pageable);
 
     PublicacionResponse buscarPorId(Long id);
 
