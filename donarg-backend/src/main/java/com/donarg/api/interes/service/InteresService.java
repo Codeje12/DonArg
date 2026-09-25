@@ -10,5 +10,9 @@ public interface InteresService {
 
     List<InteresResponse> listarPorPublicacion(Long publicacionId);
 
+    List<InteresResponse> listarMios();
+
+    List<InteresResponse> listarRecibidos();
+
     void eliminar(Long id);
 }

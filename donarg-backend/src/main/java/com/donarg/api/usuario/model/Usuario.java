@@ -67,6 +67,13 @@ public class Usuario {
     @Column(name = "promedio_valoracion", nullable = false)
     private float promedioValoracion;
 
+    @Column(name = "foto_perfil", length = 255)
+    private String fotoPerfil;
+
+    // false = cuenta dada de baja: no puede loguear mas (ver UsuarioDetailsService.isEnabled)
+    @Column(nullable = false)
+    private boolean activo;
+
     // la completa Postgres con DEFAULT now() al insertar (ver DDL), nunca se setea desde Java
     @Generated(event = EventType.INSERT)
     @Column(name = "fecha_registro", nullable = false, insertable = false, updatable = false)

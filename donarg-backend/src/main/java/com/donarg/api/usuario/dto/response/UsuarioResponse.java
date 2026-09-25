@@ -22,4 +22,5 @@ public class UsuarioResponse {
     private boolean verificado;
     private boolean emailVerificado;
     private float promedioValoracion;
+    private String fotoPerfil;
 }

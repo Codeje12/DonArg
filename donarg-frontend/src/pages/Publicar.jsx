@@ -6,6 +6,7 @@ import { crearPublicacion, buscarPublicacionPorId, actualizarPublicacion } from 
 import { agregarImagen, listarImagenesPorPublicacion, eliminarImagen, obtenerUrlImagen } from '../services/imagenService'
 import Header from '../components/Header'
 import BottomNav from '../components/BottomNav'
+import ZonaAutocomplete from '../components/ZonaAutocomplete'
 
 const formInicial = {
     tipoPublicacion: 'DONACION',
@@ -13,6 +14,8 @@ const formInicial = {
     titulo: '',
     descripcion: '',
     zonaAprox: '',
+    latitud: null,
+    longitud: null,
     condicion: '',
 }
 
@@ -108,6 +111,8 @@ function Publicar() {
                     titulo: publicacion.titulo,
                     descripcion: publicacion.descripcion || '',
                     zonaAprox: publicacion.zonaAprox || '',
+                    latitud: publicacion.latitud ?? null,
+                    longitud: publicacion.longitud ?? null,
                     condicion: publicacion.condicion ? condicionPorEtiqueta[publicacion.condicion] : '',
                 })
 
@@ -119,6 +124,14 @@ function Publicar() {
 
     function handleChange(e) {
         setForm({ ...form, [e.target.name]: e.target.value })
+    }
+
+    function handleCambiarZonaTexto(texto) {
+        setForm(f => ({ ...f, zonaAprox: texto, latitud: null, longitud: null }))
+    }
+
+    function handleSeleccionarZona({ zonaAprox, latitud, longitud }) {
+        setForm(f => ({ ...f, zonaAprox, latitud, longitud }))
     }
 
     function handleSeleccionArchivos(e) {
@@ -154,6 +167,8 @@ function Publicar() {
             titulo: form.titulo,
             descripcion: form.descripcion,
             zonaAprox: form.zonaAprox,
+            latitud: form.latitud,
+            longitud: form.longitud,
             condicion: form.condicion || null,
         }
 
@@ -236,36 +251,44 @@ function Publicar() {
             <Header />
 
             <div className="mx-auto max-w-lg px-4 py-8">
-                <form onSubmit={handleSubmit} noValidate className="bg-white rounded-xl border border-neutral-200 p-6 space-y-4">
-                    <h2 className="text-lg font-semibold text-neutral-900">
+                <form onSubmit={handleSubmit} noValidate className="bg-white rounded-xl border border-neutral-200 p-6 space-y-5">
+                    <h2 className="text-lg font-bold text-neutral-900">
                         {esEdicion ? 'Editar publicación' : 'Nueva publicación'}
                     </h2>
 
                     <div>
-                        <label className="text-sm text-neutral-600">Tipo</label>
+                        <label className="text-sm font-medium text-neutral-700">Tipo</label>
                         {esEdicion ? (
                             <p className="mt-1 text-sm text-neutral-700">{etiquetasTipo[form.tipoPublicacion]}</p>
                         ) : (
-                            <select
-                                name="tipoPublicacion"
-                                value={form.tipoPublicacion}
-                                onChange={handleChange}
-                                className="mt-1 w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm"
-                            >
-                                <option value="DONACION">Donación</option>
-                                <option value="PEDIDO">Pedido</option>
-                                <option value="ENCONTRADO">Objeto encontrado</option>
-                            </select>
+                            <div className="mt-1.5 flex gap-2">
+                                {Object.entries(etiquetasTipo).map(([valor, etiqueta]) => (
+                                    <button
+                                        key={valor}
+                                        type="button"
+                                        onClick={() => setForm(f => ({ ...f, tipoPublicacion: valor }))}
+                                        className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border ${
+                                            form.tipoPublicacion === valor
+                                                ? 'bg-emerald-600 border-emerald-600 text-white'
+                                                : 'bg-white border-neutral-300 text-neutral-600 hover:border-neutral-400'
+                                        }`}
+                                    >
+                                        {etiqueta}
+                                    </button>
+                                ))}
+                            </div>
                         )}
                     </div>
 
                     <div>
-                        <label className="text-sm text-neutral-600">Categoría</label>
+                        <label className="text-sm font-medium text-neutral-700">Categoría</label>
                         <select
                             name="categoriaId"
                             value={form.categoriaId}
                             onChange={handleChange}
-                            className="mt-1 w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm"
+                            className={`mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${
+                                errores.categoriaId ? 'border-red-400' : 'border-neutral-300'
+                            }`}
                         >
                             <option value="">Elegí una categoría</option>
                             {categorias.map(cat => (
@@ -276,49 +299,52 @@ function Publicar() {
                     </div>
 
                     <div>
-                        <label className="text-sm text-neutral-600">Título</label>
+                        <label className="text-sm font-medium text-neutral-700">Título</label>
                         <input
                             name="titulo"
                             value={form.titulo}
                             onChange={handleChange}
                             maxLength={150}
-                            className="mt-1 w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm"
+                            className={`mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${
+                                errores.titulo ? 'border-red-400' : 'border-neutral-300'
+                            }`}
                         />
                         {errores.titulo && <p className="text-xs text-red-600 mt-1">{errores.titulo}</p>}
                     </div>
 
                     <div>
-                        <label className="text-sm text-neutral-600">Descripción</label>
+                        <label className="text-sm font-medium text-neutral-700">Descripción</label>
                         <textarea
                             name="descripcion"
                             value={form.descripcion}
                             onChange={handleChange}
                             rows={3}
-                            className="mt-1 w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm"
+                            className="mt-1 w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         />
                     </div>
 
                     <div>
-                        <label className="text-sm text-neutral-600">Zona aproximada</label>
-                        <input
+                        <ZonaAutocomplete
+                            label="Zona aproximada"
                             name="zonaAprox"
                             value={form.zonaAprox}
-                            onChange={handleChange}
-                            maxLength={120}
-                            placeholder="Ej: Villa Sarita, Posadas"
-                            className="mt-1 w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm"
+                            latitud={form.latitud}
+                            longitud={form.longitud}
+                            onChangeTexto={handleCambiarZonaTexto}
+                            onSeleccionar={handleSeleccionarZona}
+                            error={errores.zonaAprox}
                         />
                         {errores.zonaAprox && <p className="text-xs text-red-600 mt-1">{errores.zonaAprox}</p>}
                     </div>
 
                     {form.tipoPublicacion !== 'PEDIDO' && (
                         <div>
-                            <label className="text-sm text-neutral-600">Condición</label>
+                            <label className="text-sm font-medium text-neutral-700">Condición</label>
                             <select
                                 name="condicion"
                                 value={form.condicion}
                                 onChange={handleChange}
-                                className="mt-1 w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm"
+                                className="mt-1 w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                             >
                                 <option value="">Sin especificar</option>
                                 <option value="NUEVO">Nuevo</option>
@@ -329,7 +355,7 @@ function Publicar() {
                     )}
 
                     <div>
-                        <label className="text-sm text-neutral-600">Fotos (opcional)</label>
+                        <label className="text-sm font-medium text-neutral-700">Fotos (opcional)</label>
                         <p className="text-xs text-neutral-400 mt-0.5">
                             Podés elegir varias fotos del mismo objeto (máximo {TAMANIO_MAXIMO_MB}MB cada una).
                         </p>
@@ -380,8 +406,8 @@ function Publicar() {
                             </ul>
                         )}
 
-                        <label className="mt-2 inline-block text-sm text-emerald-700 hover:underline cursor-pointer">
-                            + Agregar fotos
+                        <label className="mt-2 flex items-center justify-center gap-2 border-2 border-dashed border-neutral-300 rounded-lg py-3 text-sm font-medium text-neutral-500 hover:border-emerald-400 hover:text-emerald-700 cursor-pointer transition-colors">
+                            <span className="text-base leading-none">+</span> Agregar fotos
                             <input
                                 type="file"
                                 accept="image/*"
@@ -397,7 +423,7 @@ function Publicar() {
                     <button
                         type="submit"
                         disabled={enviando}
-                        className="w-full bg-emerald-600 text-white text-sm font-medium py-2 rounded-lg disabled:opacity-50"
+                        className="w-full bg-emerald-600 text-white text-sm font-semibold py-2.5 rounded-lg hover:bg-emerald-700 disabled:opacity-50"
                     >
                         {esEdicion
                             ? (enviando ? 'Guardando...' : 'Guardar cambios')

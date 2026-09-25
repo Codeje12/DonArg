@@ -1,35 +1,51 @@
 package com.donarg.api.usuario.service.impl;
 
+import com.donarg.api.exception.ArchivoInvalidoException;
 import com.donarg.api.exception.CredencialesInvalidasException;
+import com.donarg.api.exception.EmailDuplicadoException;
 import com.donarg.api.exception.OperacionInvalidaException;
 import com.donarg.api.exception.RegistroInvalidoException;
 import com.donarg.api.exception.ResourceNotFoundException;
+import com.donarg.api.usuario.dto.request.BajaCuentaRequest;
+import com.donarg.api.usuario.dto.request.CambiarEmailRequest;
+import com.donarg.api.usuario.dto.request.CambiarPasswordRequest;
+import com.donarg.api.usuario.dto.request.UsuarioActualizacionRequest;
 import com.donarg.api.usuario.dto.request.UsuarioLoginRequest;
 import com.donarg.api.usuario.dto.request.UsuarioRegistroRequest;
+import com.donarg.api.usuario.dto.response.UsuarioDniResponse;
 import com.donarg.api.usuario.dto.response.UsuarioResponse;
 import com.donarg.api.usuario.mapper.UsuarioMapper;
 import com.donarg.api.usuario.model.Usuario;
 import com.donarg.api.usuario.repository.UsuarioRepository;
+import com.donarg.api.usuario.security.UsuarioActualProvider;
 import com.donarg.api.usuario.service.UsuarioService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.Period;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @Service
@@ -39,10 +55,17 @@ public class UsuarioServiceImpl implements UsuarioService {
     private static final int EDAD_MINIMA = 18;
     private static final String FRONTEND_URL = "http://localhost:5173";
     private static final String MENSAJE_CREDENCIALES_INVALIDAS = "Email/usuario o contrasena incorrectos";
+    private static final String MENSAJE_PASSWORD_INCORRECTA = "La contrasena actual no es correcta";
+    private static final DateTimeFormatter FORMATO_NOMBRE_FOTO = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
     private final UsuarioRepository usuarioRepository;
     private final UsuarioMapper usuarioMapper;
     private final AuthenticationManager authenticationManager;
+    private final UsuarioActualProvider usuarioActualProvider;
+    private final PasswordEncoder passwordEncoder;
+
+    @Value("${donarg.imagenes.directorio}")
+    private String directorioImagenes;
 
     // se guarda el contexto de seguridad en la sesion HTTP; no hace falta bean, es sin estado propio
     private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
@@ -161,6 +184,111 @@ public class UsuarioServiceImpl implements UsuarioService {
         Usuario usuario = buscarUsuarioOFallar(id);
         generarTokenVerificacion(usuario);
         return usuarioMapper.toResponse(usuarioRepository.save(usuario));
+    }
+
+    @Override
+    public UsuarioResponse actualizarDatosPropios(UsuarioActualizacionRequest request) {
+        Usuario usuario = usuarioActualProvider.obtener();
+        usuario.setNombre(request.getNombre());
+        usuario.setApellido(request.getApellido());
+        usuario.setTelefono(request.getTelefono());
+        usuario.setFechaNacimiento(request.getFechaNacimiento());
+        return usuarioMapper.toResponse(usuarioRepository.save(usuario));
+    }
+
+    @Override
+    public void cambiarPassword(CambiarPasswordRequest request) {
+        Usuario usuario = usuarioActualProvider.obtener();
+        validarPasswordActual(usuario, request.getPasswordActual());
+
+        usuario.setPasswordHash(passwordEncoder.encode(request.getPasswordNueva()));
+        usuarioRepository.save(usuario);
+    }
+
+    @Override
+    public UsuarioResponse cambiarEmail(CambiarEmailRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        Usuario usuario = usuarioActualProvider.obtener();
+        validarPasswordActual(usuario, request.getPasswordActual());
+
+        if (!usuario.getEmail().equalsIgnoreCase(request.getNuevoEmail())
+                && usuarioRepository.existsByEmail(request.getNuevoEmail())) {
+            throw new EmailDuplicadoException("Ya existe una cuenta registrada con ese email");
+        }
+
+        // cambia de email: hay que reverificarlo, mismo mecanismo mockeado que en el registro
+        usuario.setEmail(request.getNuevoEmail());
+        usuario.setEmailVerificado(false);
+        generarTokenVerificacion(usuario);
+        Usuario usuarioGuardado = usuarioRepository.save(usuario);
+
+        // el username autenticado en esta sesion sigue siendo el email viejo (Spring Security no
+        // lo actualiza solo): sin esto, el resto de los pedidos "/me" de esta sesion empiezan a fallar
+        // (UsuarioActualProvider busca por email y ya no encuentra a nadie con el email anterior)
+        autenticar(request.getNuevoEmail(), request.getPasswordActual(), httpRequest, httpResponse);
+
+        return usuarioMapper.toResponse(usuarioGuardado);
+    }
+
+    @Override
+    public UsuarioDniResponse obtenerDniPropio() {
+        Usuario usuario = usuarioActualProvider.obtener();
+        return new UsuarioDniResponse(usuario.getDni());
+    }
+
+    @Override
+    public UsuarioResponse subirFotoPerfil(MultipartFile archivo) {
+        if (archivo == null || archivo.isEmpty()) {
+            throw new ArchivoInvalidoException("El archivo esta vacio");
+        }
+        String contentType = archivo.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new ArchivoInvalidoException("El archivo debe ser una imagen");
+        }
+
+        Usuario usuario = usuarioActualProvider.obtener();
+        String nombreArchivo = generarNombreArchivoFoto(archivo.getOriginalFilename());
+        guardarFotoEnDisco(archivo, nombreArchivo);
+
+        usuario.setFotoPerfil(nombreArchivo);
+        return usuarioMapper.toResponse(usuarioRepository.save(usuario));
+    }
+
+    @Override
+    public void darDeBaja(BajaCuentaRequest request, HttpServletRequest httpRequest) {
+        Usuario usuario = usuarioActualProvider.obtener();
+        validarPasswordActual(usuario, request.getPasswordActual());
+
+        // baja logica: no se borra nada (hay publicaciones/chats/mensajes que la referencian),
+        // solo se desactiva y se bloquea el login (ver UsuarioDetailsService.isEnabled)
+        usuario.setActivo(false);
+        usuarioRepository.save(usuario);
+
+        logout(httpRequest);
+    }
+
+    private void validarPasswordActual(Usuario usuario, String passwordActual) {
+        if (!passwordEncoder.matches(passwordActual, usuario.getPasswordHash())) {
+            throw new CredencialesInvalidasException(MENSAJE_PASSWORD_INCORRECTA);
+        }
+    }
+
+    private String generarNombreArchivoFoto(String nombreOriginal) {
+        String extension = "";
+        if (nombreOriginal != null && nombreOriginal.contains(".")) {
+            extension = nombreOriginal.substring(nombreOriginal.lastIndexOf('.'));
+        }
+        return "avatar_" + LocalDateTime.now().format(FORMATO_NOMBRE_FOTO) + extension;
+    }
+
+    private void guardarFotoEnDisco(MultipartFile archivo, String nombreArchivo) {
+        try {
+            Path directorio = Path.of(directorioImagenes);
+            Files.createDirectories(directorio);
+            Path destino = directorio.resolve(nombreArchivo);
+            Files.copy(archivo.getInputStream(), destino, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new RuntimeException("No se pudo guardar el archivo en disco", e);
+        }
     }
 
     private void generarTokenVerificacion(Usuario usuario) {

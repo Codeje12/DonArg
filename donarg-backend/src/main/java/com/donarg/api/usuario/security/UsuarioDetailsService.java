@@ -31,6 +31,8 @@ public class UsuarioDetailsService implements UserDetailsService, UserDetailsPas
                 .username(usuario.getEmail())
                 .password(usuario.getPasswordHash())
                 .authorities(AuthorityUtils.NO_AUTHORITIES)
+                // cuenta dada de baja (Usuario.activo = false) -> Spring Security la rechaza con DisabledException
+                .disabled(!usuario.isActivo())
                 .build();
     }
 

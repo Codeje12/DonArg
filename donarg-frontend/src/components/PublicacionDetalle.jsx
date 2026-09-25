@@ -10,6 +10,7 @@ import { useUsuario } from '../context/UsuarioContext'
 import { estilosEstado, etiquetasEstado } from '../utils/estadoPublicacion'
 import Carrusel from './Carrusel'
 import ChatPanel from './ChatPanel'
+import Modal from './Modal'
 
 function PublicacionDetalle({ publicacion, onVolver, onActualizar }) {
     const [imagenes, setImagenes] = useState([])
@@ -24,6 +25,7 @@ function PublicacionDetalle({ publicacion, onVolver, onActualizar }) {
     const [errorElegir, setErrorElegir] = useState(null)
     const [cambiandoEstado, setCambiandoEstado] = useState(false)
     const [errorEstado, setErrorEstado] = useState(null)
+    const [mostrarConfirmarCancelar, setMostrarConfirmarCancelar] = useState(false)
     const { usuarioActual } = useUsuario()
     const navigate = useNavigate()
 
@@ -116,13 +118,13 @@ function PublicacionDetalle({ publicacion, onVolver, onActualizar }) {
     }
 
     function handleCancelar() {
-        if (!window.confirm('¿Seguro que querés cancelar esta publicación? No se puede deshacer.')) {
-            return
-        }
         setErrorEstado(null)
         setCambiandoEstado(true)
         cancelarPublicacion(publicacion.id)
-            .then(response => onActualizar?.(response.data))
+            .then(response => {
+                onActualizar?.(response.data)
+                setMostrarConfirmarCancelar(false)
+            })
             .catch(err => setErrorEstado(err.response?.data?.message || 'No se pudo cancelar la publicación'))
             .finally(() => setCambiandoEstado(false))
     }
@@ -241,7 +243,7 @@ function PublicacionDetalle({ publicacion, onVolver, onActualizar }) {
                             </button>
                         )}
                         <button
-                            onClick={handleCancelar}
+                            onClick={() => setMostrarConfirmarCancelar(true)}
                             disabled={cambiandoEstado}
                             className="flex-1 border border-red-200 text-red-600 text-sm font-medium py-2 rounded-lg disabled:opacity-50"
                         >
@@ -249,7 +251,7 @@ function PublicacionDetalle({ publicacion, onVolver, onActualizar }) {
                         </button>
                     </div>
                 )}
-                {errorEstado && <p className="text-xs text-red-600 mt-2">{errorEstado}</p>}
+                {errorEstado && !mostrarConfirmarCancelar && <p className="text-xs text-red-600 mt-2">{errorEstado}</p>}
 
                 <div className="flex gap-2 mt-4">
                     {!esDueño && esDonacion && (
@@ -294,6 +296,32 @@ function PublicacionDetalle({ publicacion, onVolver, onActualizar }) {
                     onCerrar={() => setMostrarChat(false)}
                     onLeido={() => setNoLeidos(0)}
                 />
+            )}
+
+            {mostrarConfirmarCancelar && (
+                <Modal titulo="Cancelar publicación" onCerrar={() => setMostrarConfirmarCancelar(false)}>
+                    <p className="text-sm text-neutral-600">
+                        ¿Seguro que querés cancelar esta publicación? No se puede deshacer.
+                    </p>
+                    {errorEstado && <p className="text-xs text-red-600 mt-3">{errorEstado}</p>}
+                    <div className="flex gap-3 pt-4">
+                        <button
+                            type="button"
+                            onClick={() => setMostrarConfirmarCancelar(false)}
+                            className="px-4 py-2 rounded-lg border border-neutral-300 text-sm font-semibold text-neutral-700 hover:border-neutral-400"
+                        >
+                            Volver
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleCancelar}
+                            disabled={cambiandoEstado}
+                            className="flex-1 bg-red-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-red-700 disabled:opacity-50"
+                        >
+                            {cambiandoEstado ? 'Cancelando...' : 'Sí, cancelar publicación'}
+                        </button>
+                    </div>
+                </Modal>
             )}
         </div>
     )

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useUsuario } from '../context/UsuarioContext'
 import { obtenerMisPublicaciones } from '../services/publicacionService'
 import { etiquetasEstado } from '../utils/estadoPublicacion'
+import { marcarInteresesRevisados } from '../utils/notificaciones'
 import Header from '../components/Header'
 import BottomNav from '../components/BottomNav'
 import PublicacionCard from '../components/PublicacionCard'
@@ -22,6 +24,8 @@ function MisPublicaciones() {
         obtenerMisPublicaciones(usuarioActual.id)
             .then(response => setPublicaciones(response.data.content))
             .catch(error => console.error('Error al traer mis publicaciones', error))
+
+        marcarInteresesRevisados(usuarioActual.id)
     }, [usuarioActual])
 
     function handlePublicacionActualizada(publicacionActualizada) {
@@ -43,7 +47,17 @@ function MisPublicaciones() {
 
             <div className="mx-auto max-w-7xl px-4 py-4 md:flex md:gap-8">
                 <main className="flex-1 min-w-0">
-                    <h1 className="text-lg font-semibold text-neutral-900 mb-3">Mis publicaciones</h1>
+                    <div className="flex items-center justify-between mb-3">
+                        <h1 className="text-lg font-semibold text-neutral-900">Mis publicaciones</h1>
+                        {usuarioActual && (
+                            <Link
+                                to="/publicar"
+                                className="flex items-center gap-1.5 bg-emerald-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-emerald-700"
+                            >
+                                <span className="text-base leading-none">+</span> Crear publicación
+                            </Link>
+                        )}
+                    </div>
 
                     {!usuarioActual ? (
                         <p className="text-sm text-neutral-500 mt-4">

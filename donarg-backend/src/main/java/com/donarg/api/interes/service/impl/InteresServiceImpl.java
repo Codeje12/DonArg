@@ -64,6 +64,22 @@ public class InteresServiceImpl implements InteresService {
     }
 
     @Override
+    public List<InteresResponse> listarMios() {
+        Long usuarioId = usuarioActualProvider.obtenerId();
+        return interesRepository.findByUsuarioIdOrderByFechaDesc(usuarioId).stream()
+                .map(interesMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    public List<InteresResponse> listarRecibidos() {
+        Long usuarioId = usuarioActualProvider.obtenerId();
+        return interesRepository.findByPublicacion_Usuario_IdOrderByFechaDesc(usuarioId).stream()
+                .map(interesMapper::toResponse)
+                .toList();
+    }
+
+    @Override
     public void eliminar(Long id) {
         Interes interes = interesRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontro el interes con id " + id));

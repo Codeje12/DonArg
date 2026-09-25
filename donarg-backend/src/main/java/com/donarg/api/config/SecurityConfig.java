@@ -42,27 +42,23 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
-                /*
-                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
-                  IF_REQUIRED significa "creá una sesión HTTP si en algún momento hace falta una, no la fuerces de entrada".
-                   Es literalmente el valor por defecto de Spring Security cuando no configurás nada — no cambia el comportamiento de tu app
-                  en nada todavía. Lo agregué solo para dejarlo escrito a propósito en el código: alguien que lea SecurityConfig.java de acá
-                  a un año va a ver explícitamente que esta app usa sesiones por decisión, no porque "quedó así".*/
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
-                .authorizeHttpRequests(auth -> auth
-                        // publico: registro, login, logout y las consultas de apoyo del registro (no piden sesion)
-                        .requestMatchers(HttpMethod.POST, "/api/usuarios", "/api/usuarios/login", "/api/usuarios/logout").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/usuarios/**").permitAll()
-                        //navegar el feed, sus fotos y las categorias sin cuenta
-                        .requestMatchers(HttpMethod.GET, "/api/publicaciones/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/categorias/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/imagenes/**").permitAll()
-                        // las imagenes ya subidas (los <img> del navegador no mandan cookies de sesion)
-                        .requestMatchers("/uploads/**").permitAll()
-                        // todo lo demas (crear publicacion, ofertar, mensajes, etc.) pide sesion activa
-                        .anyRequest().authenticated());
+            .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+            .authorizeHttpRequests(auth -> auth
+                    // publico: registro, login, logout y las consultas de apoyo del registro (no piden sesion)
+                    .requestMatchers(HttpMethod.POST, "/api/usuarios", "/api/usuarios/login", "/api/usuarios/logout").permitAll()
+                    // mas especifico que el permitAll de abajo: el propio DNI nunca es publico, hace falta sesion
+                    .requestMatchers(HttpMethod.GET, "/api/usuarios/me/**").authenticated()
+                    .requestMatchers(HttpMethod.GET, "/api/usuarios/**").permitAll()
+                    //navegar el feed, sus fotos y las categorias sin cuenta
+                    .requestMatchers(HttpMethod.GET, "/api/publicaciones/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/categorias/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/imagenes/**").permitAll()
+                    // las imagenes ya subidas (los <img> del navegador no mandan cookies de sesion)
+                    .requestMatchers("/uploads/**").permitAll()
+                    // todo lo demas pide sesion activa
+                    .anyRequest().authenticated());
         return http.build();
     }
 

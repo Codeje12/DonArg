@@ -25,6 +25,7 @@ public class UsuarioMapper {
         usuario.setVerificado(false);
         usuario.setEmailVerificado(false);
         usuario.setPromedioValoracion(0f);
+        usuario.setActivo(true);
         return usuario;
     }
 
@@ -40,6 +41,7 @@ public class UsuarioMapper {
         response.setVerificado(usuario.isVerificado());
         response.setEmailVerificado(usuario.isEmailVerificado());
         response.setPromedioValoracion(usuario.getPromedioValoracion());
+        response.setFotoPerfil(usuario.getFotoPerfil());
         return response;
     }
 }

@@ -40,8 +40,14 @@ export function UsuarioProvider({ children }) {
         setUsuarioActualState(null)
     }
 
+    // para cuando cambian datos propios (editar perfil, cambiar email, foto) y hay que
+    // refrescar el usuario en memoria sin tocar donde esta guardado el id (local/session storage)
+    function actualizarUsuarioActual(usuario) {
+        setUsuarioActualState(usuario)
+    }
+
     return (
-        <UsuarioContext.Provider value={{ usuarioActual, setUsuarioActual, cerrarSesion, cargando }}>
+        <UsuarioContext.Provider value={{ usuarioActual, setUsuarioActual, actualizarUsuarioActual, cerrarSesion, cargando }}>
             {children}
         </UsuarioContext.Provider>
     )

@@ -1,10 +1,16 @@
 package com.donarg.api.usuario.service;
 
+import com.donarg.api.usuario.dto.request.BajaCuentaRequest;
+import com.donarg.api.usuario.dto.request.CambiarEmailRequest;
+import com.donarg.api.usuario.dto.request.CambiarPasswordRequest;
+import com.donarg.api.usuario.dto.request.UsuarioActualizacionRequest;
 import com.donarg.api.usuario.dto.request.UsuarioLoginRequest;
 import com.donarg.api.usuario.dto.request.UsuarioRegistroRequest;
+import com.donarg.api.usuario.dto.response.UsuarioDniResponse;
 import com.donarg.api.usuario.dto.response.UsuarioResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface UsuarioService {
 
@@ -23,4 +29,16 @@ public interface UsuarioService {
     UsuarioResponse verificarEmail(String token);
 
     UsuarioResponse reenviarVerificacion(Long id);
+
+    UsuarioResponse actualizarDatosPropios(UsuarioActualizacionRequest request);
+
+    void cambiarPassword(CambiarPasswordRequest request);
+
+    UsuarioResponse cambiarEmail(CambiarEmailRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse);
+
+    UsuarioDniResponse obtenerDniPropio();
+
+    UsuarioResponse subirFotoPerfil(MultipartFile archivo);
+
+    void darDeBaja(BajaCuentaRequest request, HttpServletRequest httpRequest);
 }

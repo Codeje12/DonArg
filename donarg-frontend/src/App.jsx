@@ -3,6 +3,7 @@ import Feed from './pages/Feed'
 import Publicar from './pages/Publicar'
 import Mensajes from './pages/Mensajes'
 import MisPublicaciones from './pages/MisPublicaciones'
+import MisIntereses from './pages/MisIntereses'
 import Registro from './pages/Registro'
 import VerificarEmail from './pages/VerificarEmail'
 import Login from './pages/Login'
@@ -16,6 +17,7 @@ function App() {
             <Route path="/publicar/:id" element={<Publicar />} />
             <Route path="/mensajes" element={<Mensajes />} />
             <Route path="/mis-publicaciones" element={<MisPublicaciones />} />
+            <Route path="/mis-intereses" element={<MisIntereses />} />
             <Route path="/registro" element={<Registro />} />
             <Route path="/verificar-email" element={<VerificarEmail />} />
             <Route path="/login" element={<Login />} />

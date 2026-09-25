@@ -4,6 +4,7 @@ import { useUsuario } from '../context/UsuarioContext'
 import { registrarUsuario, nombreUsuarioDisponible, reenviarVerificacion } from '../services/usuarioService'
 import LogoIcon from '../components/LogoIcon'
 import Wordmark from '../components/Wordmark'
+import DatePicker from '../components/DatePicker'
 
 const formInicial = {
     nombre: '', apellido: '', email: '', nombreUsuario: '',
@@ -343,9 +344,8 @@ function Registro() {
                                     {errorDe('dni', erroresPaso2) && <p className="text-xs text-red-600 mt-1">{errorDe('dni', erroresPaso2)}</p>}
                                 </div>
                                 <div>
-                                    <label className="text-sm font-medium text-neutral-700">Fecha de nacimiento</label>
-                                    <input type="date" name="fechaNacimiento" value={form.fechaNacimiento} onChange={handleChange}
-                                        className="mt-1 w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                                    <DatePicker label="Fecha de nacimiento" name="fechaNacimiento" value={form.fechaNacimiento} onChange={handleChange}
+                                        error={!!errorDe('fechaNacimiento', erroresPaso2)} />
                                     {errorDe('fechaNacimiento', erroresPaso2) && <p className="text-xs text-red-600 mt-1">{errorDe('fechaNacimiento', erroresPaso2)}</p>}
                                 </div>
                             </div>

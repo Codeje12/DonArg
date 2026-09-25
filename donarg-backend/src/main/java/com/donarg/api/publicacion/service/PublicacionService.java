@@ -13,7 +13,8 @@ public interface PublicacionService {
 
     PublicacionResponse crear(PublicacionRequest request);
 
-    Page<PublicacionResponse> listar(TipoPublicacion tipo, EstadoPublicacion estado, Long categoriaId, Long usuarioId, Pageable pageable);
+    Page<PublicacionResponse> listar(TipoPublicacion tipo, EstadoPublicacion estado, EstadoPublicacion estadoExcluido,
+                                      Long categoriaId, Long usuarioId, Long usuarioIdExcluido, Pageable pageable);
 
     PublicacionResponse buscarPorId(Long id);
 

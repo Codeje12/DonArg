@@ -1,19 +1,25 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useUsuario } from '../context/UsuarioContext'
-
-// Placeholder fijo: no hay sistema de notificaciones todavia (ver MiCuenta.jsx)
-const NOTIFICACIONES_HARDCODEADAS = 3
+import { listarMisChats } from '../services/chatService'
+import { listarInteresesRecibidos } from '../services/interesService'
+import { obtenerUltimaRevisionIntereses, marcarInteresesRevisados } from '../utils/notificaciones'
 
 function claseEnlace(activo) {
-    return `block px-4 py-2.5 text-sm rounded-lg ${
+    return `flex items-center gap-1.5 px-4 py-2.5 text-sm rounded-lg ${
         activo ? 'bg-emerald-50 text-emerald-800 font-medium' : 'text-neutral-700 hover:bg-neutral-50'
     }`
+}
+
+function Punto() {
+    return <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
 }
 
 function MenuPerfil() {
     const { usuarioActual, cerrarSesion } = useUsuario()
     const [abierto, setAbierto] = useState(false)
+    const [mensajesNoLeidos, setMensajesNoLeidos] = useState(0)
+    const [nuevosIntereses, setNuevosIntereses] = useState(0)
     const location = useLocation()
     const contenedorRef = useRef(null)
 
@@ -27,11 +33,50 @@ function MenuPerfil() {
         return () => document.removeEventListener('mousedown', handleClickFuera)
     }, [])
 
+    useEffect(() => {
+        if (!usuarioActual) {
+            return
+        }
+
+        function cargarNotificaciones() {
+            listarMisChats()
+                .then(response => {
+                    const total = response.data.reduce((suma, chat) => suma + chat.noLeidos, 0)
+                    setMensajesNoLeidos(total)
+                })
+                .catch(error => console.error('Error al traer notificaciones de mensajes', error))
+
+            listarInteresesRecibidos()
+                .then(response => {
+                    let ultimaRevision = obtenerUltimaRevisionIntereses(usuarioActual.id)
+                    if (!ultimaRevision) {
+                        // primera vez que corre esto: no bombardear con "nuevos" intereses viejos
+                        marcarInteresesRevisados(usuarioActual.id)
+                        ultimaRevision = new Date()
+                    }
+                    const nuevos = response.data.filter(interes => new Date(interes.fecha) > ultimaRevision).length
+                    setNuevosIntereses(nuevos)
+                })
+                .catch(error => console.error('Error al traer notificaciones de intereses', error))
+        }
+
+        cargarNotificaciones()
+        const intervalo = setInterval(cargarNotificaciones, 20000)
+        return () => clearInterval(intervalo)
+    }, [usuarioActual])
+
     if (!usuarioActual) {
         return null
     }
 
+    function handleClickMisPublicaciones() {
+        setAbierto(false)
+        marcarInteresesRevisados(usuarioActual.id)
+        setNuevosIntereses(0)
+    }
+
     const inicialApellido = usuarioActual.apellido ? `${usuarioActual.apellido.charAt(0)}.` : ''
+    const totalNotificaciones = mensajesNoLeidos + nuevosIntereses
 
     return (
         <div className="relative" ref={contenedorRef}>
@@ -44,9 +89,11 @@ function MenuPerfil() {
                 </span>
                 <span className="relative w-7 h-7 rounded-full bg-neutral-200 flex items-center justify-center text-xs font-semibold text-neutral-600">
                     {usuarioActual.nombre?.charAt(0)}
-                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center">
-                        {NOTIFICACIONES_HARDCODEADAS}
-                    </span>
+                    {totalNotificaciones > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center">
+                            {totalNotificaciones}
+                        </span>
+                    )}
                 </span>
             </button>
 
@@ -63,11 +110,14 @@ function MenuPerfil() {
 
                     <hr className="my-1.5 border-neutral-100" />
 
-                    <Link to="/mis-publicaciones" onClick={() => setAbierto(false)} className={claseEnlace(location.pathname === '/mis-publicaciones')}>
-                        Mis publicaciones
+                    <Link to="/mis-publicaciones" onClick={handleClickMisPublicaciones} className={claseEnlace(location.pathname === '/mis-publicaciones')}>
+                        Mis publicaciones {nuevosIntereses > 0 && <Punto />}
+                    </Link>
+                    <Link to="/mis-intereses" onClick={() => setAbierto(false)} className={claseEnlace(location.pathname === '/mis-intereses')}>
+                        Mis intereses
                     </Link>
                     <Link to="/mensajes" onClick={() => setAbierto(false)} className={claseEnlace(location.pathname === '/mensajes')}>
-                        Mensajes
+                        Mensajes {mensajesNoLeidos > 0 && <Punto />}
                     </Link>
                     <Link to="/mi-cuenta" onClick={() => setAbierto(false)} className={claseEnlace(location.pathname === '/mi-cuenta')}>
                         Datos de la cuenta

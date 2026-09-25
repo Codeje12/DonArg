@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useUsuario } from '../context/UsuarioContext'
 import { obtenerPublicaciones } from '../services/publicacionService'
 import { obtenerCategorias } from '../services/categoriaService'
 import Header from '../components/Header'
@@ -9,6 +10,7 @@ import PublicacionDetalle from '../components/PublicacionDetalle'
 const TAMANIO_PAGINA = 10
 
 function Feed() {
+    const { usuarioActual } = useUsuario()
     const [publicaciones, setPublicaciones] = useState([])
     const [categorias, setCategorias] = useState([])
     const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null)
@@ -24,16 +26,18 @@ function Feed() {
             .catch(error => console.error('Error al traer categorias', error))
     }, [])
 
-    // Al cambiar de categoria arrancamos de nuevo desde la primera pagina.
+    const usuarioActualId = usuarioActual?.id
+
+    // Al cambiar de categoria (o de usuario logueado) arrancamos de nuevo desde la primera pagina.
     useEffect(() => {
         setPublicaciones([])
         setPagina(0)
         setHayMas(true)
-    }, [categoriaSeleccionada])
+    }, [categoriaSeleccionada, usuarioActualId])
 
     useEffect(() => {
         setCargandoMas(true)
-        obtenerPublicaciones(categoriaSeleccionada, pagina, TAMANIO_PAGINA)
+        obtenerPublicaciones(categoriaSeleccionada, pagina, TAMANIO_PAGINA, usuarioActualId)
             .then(response => {
                 const { content, last } = response.data
                 setPublicaciones(prev => (pagina === 0 ? content : [...prev, ...content]))
@@ -41,7 +45,7 @@ function Feed() {
             })
             .catch(error => console.error('Error al traer publicaciones', error))
             .finally(() => setCargandoMas(false))
-    }, [categoriaSeleccionada, pagina])
+    }, [categoriaSeleccionada, pagina, usuarioActualId])
 
     useEffect(() => {
         const nodo = sentinelaRef.current

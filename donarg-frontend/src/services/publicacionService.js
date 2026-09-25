@@ -1,8 +1,8 @@
 import api from './api'
 
-export function obtenerPublicaciones(categoriaId, page = 0, size = 10) {
+export function obtenerPublicaciones(categoriaId, page = 0, size = 10, usuarioIdExcluido) {
     return api.get('/publicaciones', {
-        params: { categoriaId, page, size }
+        params: { categoriaId, page, size, estadoExcluido: 'CANCELADA', usuarioIdExcluido }
     })
 }
 

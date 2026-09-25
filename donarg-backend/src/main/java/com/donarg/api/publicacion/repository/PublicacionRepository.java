@@ -15,13 +15,17 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, Long> 
             SELECT p FROM Publicacion p
             WHERE (:tipo IS NULL OR p.tipoPublicacion = :tipo)
               AND (:estado IS NULL OR p.estado = :estado)
+              AND (:estadoExcluido IS NULL OR p.estado <> :estadoExcluido)
               AND (:categoriaId IS NULL OR p.categoria.id = :categoriaId)
               AND (:usuarioId IS NULL OR p.usuario.id = :usuarioId)
+              AND (:usuarioIdExcluido IS NULL OR p.usuario.id <> :usuarioIdExcluido)
             ORDER BY p.fechaPublicacion DESC
             """)
     Page<Publicacion> buscarConFiltros(@Param("tipo") TipoPublicacion tipo,
                                         @Param("estado") EstadoPublicacion estado,
+                                        @Param("estadoExcluido") EstadoPublicacion estadoExcluido,
                                         @Param("categoriaId") Long categoriaId,
                                         @Param("usuarioId") Long usuarioId,
+                                        @Param("usuarioIdExcluido") Long usuarioIdExcluido,
                                         Pageable pageable);
 }

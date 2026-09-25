@@ -28,6 +28,16 @@ public class InteresController {
         return ResponseEntity.ok(interesService.listarPorPublicacion(publicacionId));
     }
 
+    @GetMapping("/mios")
+    public ResponseEntity<List<InteresResponse>> listarMios() {
+        return ResponseEntity.ok(interesService.listarMios());
+    }
+
+    @GetMapping("/recibidos")
+    public ResponseEntity<List<InteresResponse>> listarRecibidos() {
+        return ResponseEntity.ok(interesService.listarRecibidos());
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         interesService.eliminar(id);

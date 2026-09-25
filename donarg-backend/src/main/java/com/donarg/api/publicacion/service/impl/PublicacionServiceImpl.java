@@ -49,8 +49,9 @@ public class PublicacionServiceImpl implements PublicacionService {
     }
 
     @Override
-    public Page<PublicacionResponse> listar(TipoPublicacion tipo, EstadoPublicacion estado, Long categoriaId, Long usuarioId, Pageable pageable) {
-        return publicacionRepository.buscarConFiltros(tipo, estado, categoriaId, usuarioId, pageable)
+    public Page<PublicacionResponse> listar(TipoPublicacion tipo, EstadoPublicacion estado, EstadoPublicacion estadoExcluido,
+                                             Long categoriaId, Long usuarioId, Long usuarioIdExcluido, Pageable pageable) {
+        return publicacionRepository.buscarConFiltros(tipo, estado, estadoExcluido, categoriaId, usuarioId, usuarioIdExcluido, pageable)
                 .map(publicacionMapper::toResponse);
     }
 

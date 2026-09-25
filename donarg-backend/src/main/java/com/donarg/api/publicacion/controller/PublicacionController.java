@@ -32,11 +32,14 @@ public class PublicacionController {
     public ResponseEntity<Page<PublicacionResponse>> listar(
             @RequestParam(required = false) TipoPublicacion tipo,
             @RequestParam(required = false) EstadoPublicacion estado,
+            @RequestParam(required = false) EstadoPublicacion estadoExcluido,
             @RequestParam(required = false) Long categoriaId,
             @RequestParam(required = false) Long usuarioId,
+            @RequestParam(required = false) Long usuarioIdExcluido,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(publicacionService.listar(tipo, estado, categoriaId, usuarioId, PageRequest.of(page, size)));
+        return ResponseEntity.ok(publicacionService.listar(
+                tipo, estado, estadoExcluido, categoriaId, usuarioId, usuarioIdExcluido, PageRequest.of(page, size)));
     }
 
     @GetMapping("/{id}")
